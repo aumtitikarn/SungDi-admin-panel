@@ -1,41 +1,33 @@
+// app/(public)/signup/page.tsx (หรือ register/page.tsx)
 "use client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { signIn } from "next-auth/react";                 // ⬅️
 import AuthCard from "@/components/auth/AuthCard";
 import TextField from "@/components/auth/TextField";
 import PasswordField from "@/components/auth/PasswordField";
-import {
-  HttpError,
-  register as apiRegister,
-  login as apiLogin,
-} from "@/lib/authClient";
+import { HttpError, register as apiRegister } from "@/lib/authClient";
 
-function isEmail(v: string) {
-  return /.+@.+\..+/.test(v);
-}
+function isEmail(v: string) { return /.+@.+\..+/.test(v); }
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [displayName, setDisplayName] = useState("");
+  const [shopName, setshopName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [numberphone, setNumberphone] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{
-    displayName?: string;
-    email?: string;
-    password?: string;
-    confirm?: string;
-    form?: string;
-  }>({});
+  const [errors, setErrors] = useState<{ shopName?: string; email?: string; password?: string; confirm?: string; form?: string; numberphone?: string; }>({});
 
   function validate() {
     const next: typeof errors = {};
-    if (!displayName) next.displayName = "กรอกชื่อที่แสดง";
+    if (!shopName) next.shopName = "กรอกชื่อที่ร้านค้า";
     if (!email) next.email = "กรอกอีเมล";
     else if (!isEmail(email)) next.email = "รูปแบบอีเมลไม่ถูกต้อง";
     if (!password) next.password = "กรอกรหัสผ่าน";
+    if (!numberphone) next.numberphone = "กรอกเบอร์โทรศัพท์มือถือ";
     if (confirm !== password) next.confirm = "รหัสผ่านไม่ตรงกัน";
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -48,17 +40,23 @@ export default function RegisterPage() {
     setErrors({});
 
     try {
-      await apiRegister({ displayName, email, password });
-      await apiLogin({ email, password });
-      router.push("/");
+      await apiRegister({ shopName, email, password, numberphone }); // สมัครที่ backend ของคุณ
+      const res = await signIn("credentials", {                         // แล้วให้ NextAuth ล็อกอิน
+        redirect: false,
+        email,
+        password,
+      });
+      if (res?.error) {
+        setErrors({ form: "เข้าสู่ระบบอัตโนมัติไม่สำเร็จ กรุณาลองล็อกอิน" });
+      } else {
+        router.push("/");
+      }
     } catch (err: unknown) {
       let msg = "สมัครสมาชิกไม่สำเร็จ";
       if (err instanceof HttpError) {
-        if (err.status === 409 || err.code === "EMAIL_EXISTS")
-          msg = "อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น";
+        if (err.status === 409 || err.code === "EMAIL_EXISTS") msg = "อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น";
         else if (err.code === "INVALID_EMAIL") msg = "รูปแบบอีเมลไม่ถูกต้อง";
-        else if (err.code === "WEAK_PASSWORD")
-          msg = "รหัสผ่านควรมีอย่างน้อย 6 ตัวอักษร";
+        else if (err.code === "WEAK_PASSWORD") msg = "รหัสผ่านควรมีอย่างน้อย 6 ตัวอักษร";
         else msg = err.message || msg;
       } else if (err instanceof Error) {
         msg = err.message;
@@ -73,58 +71,17 @@ export default function RegisterPage() {
     <main className="min-h-screen grid place-items-center px-4 bg-white">
       <form onSubmit={onSubmit}>
         <AuthCard title="สมัครสมาชิก" subtitle="เริ่มใช้งานระบบ POS ของคุณ">
-          {errors.form && (
-            <div className="mb-3 rounded-xl bg-red-50 text-red-700 px-3 py-2 text-sm">
-              {errors.form}
-            </div>
-          )}
-
-          <TextField
-            label="ชื่อร้านค้า"
-            placeholder="ชื่อร้านค้า"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            error={errors.displayName}
-            className="mb-3"
-          />
-          <TextField
-            label="อีเมล"
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={errors.email}
-            className="mb-3"
-          />
-          <PasswordField
-            label="รหัสผ่าน"
-            placeholder="อย่างน้อย 6 ตัวอักษร"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            error={errors.password}
-            className="mb-3"
-          />
-          <PasswordField
-            label="ยืนยันรหัสผ่าน"
-            placeholder="พิมพ์ซ้ำอีกครั้ง"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            error={errors.confirm}
-            className="mb-4"
-          />
-
-          <button
-            className="w-full rounded-xl px-4 py-2 font-medium text-white bg-[#faa500] hover:opacity-90 active:opacity-80 transition"
-            disabled={loading}
-          >
+          {errors.form && <div className="mb-3 rounded-xl bg-red-50 text-red-700 px-3 py-2 text-sm">{errors.form}</div>}
+          <TextField label="ชื่อร้านค้า" placeholder="ชื่อร้านค้า" value={shopName} onChange={(e)=>setshopName(e.target.value)} error={errors.shopName} className="mb-3" />
+          <TextField label="เบอร์โทรศัพท์มือถือ" placeholder="เบอร์โทรศัพท์มือถือ" value={numberphone} onChange={(e)=>setNumberphone(e.target.value)} error={errors.numberphone} className="mb-3" />
+          <TextField label="อีเมล" type="email" placeholder="you@example.com" value={email} onChange={(e)=>setEmail(e.target.value)} error={errors.email} className="mb-3" />
+          <PasswordField label="รหัสผ่าน" placeholder="อย่างน้อย 6 ตัวอักษร" value={password} onChange={(e)=>setPassword(e.target.value)} error={errors.password} className="mb-3" />
+          <PasswordField label="ยืนยันรหัสผ่าน" placeholder="พิมพ์ซ้ำอีกครั้ง" value={confirm} onChange={(e)=>setConfirm(e.target.value)} error={errors.confirm} className="mb-4" />
+          <button className="w-full rounded-xl px-4 py-2 font-medium text-white bg-[#faa500] hover:opacity-90 active:opacity-80 transition" disabled={loading}>
             {loading ? "กำลังสมัคร..." : "สมัครสมาชิก"}
           </button>
-
           <p className="mt-4 text-sm text-center text-gray-600">
-            มีบัญชีแล้ว?{" "}
-            <Link href="/login" className="text-[#faa500] underline">
-              เข้าสู่ระบบ
-            </Link>
+            มีบัญชีแล้ว? <Link href="/login" className="text-[#faa500] underline">เข้าสู่ระบบ</Link>
           </p>
         </AuthCard>
       </form>

@@ -1,10 +1,9 @@
 // lib/authClient.ts
 export type LoginInput = { email: string; password: string };
-export type RegisterInput = { displayName: string; email: string; password: string };
+export type RegisterInput = { shopName: string; email: string; password: string; numberphone: string };
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
 
-/** Error ที่มีสถานะและโค้ด ใช้จับใน UI ได้ง่าย */
 export class HttpError extends Error {
   status: number;
   code?: string;
